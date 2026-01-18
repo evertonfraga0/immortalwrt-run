@@ -41,6 +41,17 @@ jobs:
         # if set to "true" but frees about 6 GB
         tool-cache: true
         
+    - name: Freeing up disk space
+      uses: easimon/maximize-build-space@master
+      with: 
+        root-reserve-mb: 3072
+        swap-size-mb: 1
+        remove-dotnet: 'true'
+        remove-android: 'true'
+        remove-haskell: 'true'
+        remove-codeql: 'true'
+        remove-docker-images: 'true'
+        
     - name: Checkout
       uses: actions/checkout@main
 
@@ -50,6 +61,8 @@ jobs:
       run: |
         #sudo rm -rf /etc/apt/sources.list.d/* /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
         #sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
+        #sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /etc/mysql /etc/php /opt/hostedtoolcache/CodeQL
+        #sudo -E apt-get -y purge azure-cli* docker* ghc* zulu* hhvm* llvm* firefox* google* dotnet* aspnetcore* powershell* openjdk* adoptopenjdk* mysql* php* mongodb* moby* snap* || true
         #sudo docker image prune --all --force
         sudo -E apt-get -qq update
         #sudo -E apt-get -qq install ack antlr3 asciidoc autoconf automake autopoint binutils bison build-essential bzip2 ccache cmake cpio curl device-tree-compiler fastjar flex gawk gettext gcc-multilib g++-multilib git gperf haveged help2man intltool libc6-dev-i386 libelf-dev libfuse-dev libglib2.0-dev libgmp3-dev libltdl-dev libmpc-dev libmpfr-dev libncurses5-dev libncursesw5-dev libpython3-dev libreadline-dev libssl-dev libtool lrzsz mkisofs msmtp ninja-build p7zip p7zip-full patch pkgconf python2.7 python3 python3-pyelftools python3-setuptools qemu-utils rsync scons squashfs-tools subversion swig texinfo uglifyjs upx-ucl unzip vim wget xmlto xxd zlib1g-dev
@@ -62,16 +75,16 @@ jobs:
 
     - name: Clone source code
       #working-directory: /workdir
-      working-directory: /mnt
+      working-directory: ./
 
       run: |
         df -hT $PWD
-        sudo mkdir -p workdir
-        sudo chown -R $USER:$USER workdir
-        cd workdir
+        #sudo mkdir -p workdir
+        #sudo chown -R $USER:$USER workdir
+        #cd workdir
         git clone $REPO_URL -b $REPO_BRANCH openwrt
         #ln -sf /workdir/openwrt $GITHUB_WORKSPACE/openwrt
-        ln -sf /mnt/workdir/openwrt $GITHUB_WORKSPACE/openwrt
+        #ln -sf /mnt/workdir/openwrt $GITHUB_WORKSPACE/openwrt
         df -h
 
     - name: Load custom feeds
@@ -103,11 +116,15 @@ jobs:
         make download -j8
         find dl -size -1024c -exec ls -l {} \;
         find dl -size -1024c -exec rm -f {} \;
+        df -h
 
     - name: Compile the firmware
       id: compile
       run: |
         cd openwrt
+        # rust
+        #sed -i s/llvm=true/llvm=false/g feeds/packages/lang/rust/Makefile
+        
         echo -e "$(nproc) thread compile"
         make -j$(nproc) || make -j1 || make -j1 V=s
         echo "status=success" >> $GITHUB_OUTPUT
@@ -150,7 +167,7 @@ jobs:
       id: tag
       if: env.UPLOAD_RELEASE == 'true' && !cancelled()
       run: |
-        echo "release_tag=$(date +"%Y.%m.%d-%H%M")" >> $GITHUB_OUTPUT
+        echo "release_tag=${{env.REPO_BRANCH}}-$(date +"%Y.%m.%d-%H%M")" >> $GITHUB_OUTPUT
         touch release.txt
         [ ${UPLOAD_GOFILE} = true && ${{ steps.gofile.outputs.url }} ] && echo "🔗 [GoFile](${{ steps.gofile.outputs.url }})" >> release.txt
         echo "status=success" >> $GITHUB_OUTPUT
