@@ -68,7 +68,6 @@ jobs:
 
       run: |
         df -hT $PWD
-        echo $USER
         sudo mkdir -p workdir
         sudo chown -R $USER:$USER workdir
         cd workdir
@@ -107,7 +106,6 @@ jobs:
         find dl -size -1024c -exec ls -l {} \;
         find dl -size -1024c -exec rm -f {} \;
         df -h
-        exit -1
 
     - name: Compile the firmware
       id: compile
