@@ -121,7 +121,6 @@ jobs:
     - name: Compile the firmware
       id: compile
       run: |
-        exit -1
         cd openwrt
         # rust
         sed -i s/llvm=true/llvm=false/g feeds/packages/lang/rust/Makefile
